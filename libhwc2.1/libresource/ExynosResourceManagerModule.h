@@ -29,8 +29,7 @@ class ExynosResourceManagerModule : public gs201::ExynosResourceManagerModule {
         /* TDM (Time-Division Multiplexing) based Resource Management */
         virtual bool isHWResourceAvailable(ExynosDisplay *display, ExynosMPP *currentMPP,
                                            ExynosMPPSource *mppSrc);
-        virtual uint32_t setDisplaysTDMInfo();
-        virtual uint32_t initDisplaysTDMInfo();
+        virtual uint32_t setDisplaysTDMInfo(ExynosDisplay* mainDisp, ExynosDisplay* minorDisp);
         virtual uint32_t calculateHWResourceAmount(ExynosDisplay *display, ExynosMPPSource *mppSrc);
         virtual int32_t otfMppReordering(ExynosDisplay *display, ExynosMPPVector &otfMPPs,
                                          struct exynos_image &src, struct exynos_image &dst);
@@ -45,10 +44,10 @@ class ExynosResourceManagerModule : public gs201::ExynosResourceManagerModule {
         bool checkTDMResource(ExynosDisplay *display, ExynosMPP *currentMPP,
                               ExynosMPPSource *mppSrc);
         const std::map<HWResourceIndexes, HWResourceAmounts_t> *mHWResourceTables = nullptr;
-        void setupHWResource(const tdm_attr_t &tdmAttrId, const String8 &name,
-                             const DPUblockId_t &blkId, const AXIPortId_t &axiId,
-                             ExynosDisplay *display, ExynosDisplay *addedDisplay,
-                             const ConstraintRev_t &constraintsRev);
+        void setupHWResource(const tdm_attr_t& tdmAttrId, const String8& name,
+                             const DPUblockId_t& blkId, const AXIPortId_t& axiId,
+                             ExynosDisplay* mainDisp, ExynosDisplay* minorDisp,
+                             const ConstraintRev_t& constraintsRev);
 
     private:
         ConstraintRev_t mConstraintRev;
