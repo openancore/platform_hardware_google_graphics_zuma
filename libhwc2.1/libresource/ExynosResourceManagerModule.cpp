@@ -162,12 +162,13 @@ void ExynosResourceManagerModule::setupHWResource(const tdm_attr_t& tdmAttrId, c
         const auto &TDMInfoIdx = (HWAttrs.at(tdmAttrId).loadSharing == LS_DPUF)
                 ? std::make_pair(blkId, AXI_DONT_CARE)
                 : std::make_pair(blkId, axiId);
-        const uint32_t mainAmount =
-                (minorDisp != nullptr) ? hwResource.mainAmount
-                                       : hwResource.mainAmount + hwResource.minorAmount;
-
-        mainDisp->mDisplayTDMInfo[TDMInfoIdx]
-                .initTDMInfo(DisplayTDMInfo::ResourceAmount_t{mainAmount}, tdmAttrId);
+        if (mainDisp != nullptr) {
+            const uint32_t mainAmount = (minorDisp != nullptr)
+                    ? hwResource.mainAmount
+                    : hwResource.mainAmount + hwResource.minorAmount;
+            mainDisp->mDisplayTDMInfo[TDMInfoIdx]
+                    .initTDMInfo(DisplayTDMInfo::ResourceAmount_t{mainAmount}, tdmAttrId);
+        }
         if (minorDisp != nullptr) {
             const uint32_t minorAmount = hwResource.minorAmount;
             minorDisp->mDisplayTDMInfo[TDMInfoIdx]
