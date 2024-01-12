@@ -48,6 +48,9 @@ class ExynosResourceManagerModule : public gs201::ExynosResourceManagerModule {
                              const DPUblockId_t& blkId, const AXIPortId_t& axiId,
                              ExynosDisplay* mainDisp, ExynosDisplay* minorDisp,
                              const ConstraintRev_t& constraintsRev);
+        virtual bool isAssignable(ExynosMPP* candidateMPP, ExynosDisplay* display,
+                                  struct exynos_image& src, struct exynos_image& dst,
+                                  ExynosMPPSource* mppSrc);
 
     private:
         ConstraintRev_t mConstraintRev;

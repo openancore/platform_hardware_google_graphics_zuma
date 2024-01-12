@@ -577,3 +577,15 @@ uint32_t ExynosResourceManagerModule::getAmounts(ExynosDisplay* display, uint32_
 
     return 0;
 }
+
+bool ExynosResourceManagerModule::isAssignable(ExynosMPP* candidateMPP, ExynosDisplay* display,
+                                               struct exynos_image& src, struct exynos_image& dst,
+                                               ExynosMPPSource* mppSrc) {
+    if (display != nullptr && candidateMPP != nullptr &&
+        display->mType == HWC_DISPLAY_EXTERNAL &&
+        !(candidateMPP->mPhysicalType == MPP_DPP_VGRFS && candidateMPP->mPhysicalIndex == 0)) {
+        return false;
+    }
+    return gs201::ExynosResourceManagerModule::isAssignable(candidateMPP, display, src, dst,
+                                                            mppSrc);
+}
