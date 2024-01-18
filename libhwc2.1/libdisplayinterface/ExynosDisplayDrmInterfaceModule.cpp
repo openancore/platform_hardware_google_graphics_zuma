@@ -24,7 +24,7 @@ ExynosPrimaryDisplayDrmInterfaceModule::ExynosPrimaryDisplayDrmInterfaceModule(E
   : gs201::ExynosPrimaryDisplayDrmInterfaceModule(exynosDisplay)
 {
             ExynosPrimaryDisplayModule* display = (ExynosPrimaryDisplayModule*)mExynosDisplay;
-            const std::string &sysfs = display->getPanelSysfsPath(display->getBuiltInDisplayType());
+            const std::string& sysfs = display->getPanelSysfsPath();
             std::string panelModel;
 
             if (sysfs.empty()) {
@@ -51,3 +51,26 @@ ExynosPrimaryDisplayDrmInterfaceModule::ExynosPrimaryDisplayDrmInterfaceModule(E
 
             std::memcpy(mMonitorDescription.data(), panelModel.c_str(), mMonitorDescription.size());
 }
+
+// TODO: b/295990513 - Remove the if defined after kernel prebuilts are merged.
+#if defined(EXYNOS_HISTOGRAM_CHANNEL_REQUEST)
+int32_t ExynosPrimaryDisplayDrmInterfaceModule::sendHistogramChannelIoctl(HistogramChannelIoctl_t control, uint8_t channelId) const {
+    struct exynos_drm_histogram_channel_request histogramRequest;
+
+    histogramRequest.crtc_id = mDrmCrtc->id();
+    histogramRequest.hist_id = channelId;
+
+    if (control == HistogramChannelIoctl_t::REQUEST) {
+        ATRACE_NAME(String8::format("requestIoctl #%u", channelId).c_str());
+        return mDrmDevice->CallVendorIoctl(DRM_IOCTL_EXYNOS_HISTOGRAM_CHANNEL_REQUEST,
+                                           (void *)&histogramRequest);
+    } else if (control == HistogramChannelIoctl_t::CANCEL) {
+        ATRACE_NAME(String8::format("cancelIoctl #%u", channelId).c_str());
+        return mDrmDevice->CallVendorIoctl(DRM_IOCTL_EXYNOS_HISTOGRAM_CHANNEL_CANCEL,
+                                           (void *)&histogramRequest);
+    } else {
+        ALOGE("%s: unknown control %d", __func__, (int)control);
+        return BAD_VALUE;
+    }
+}
+#endif
