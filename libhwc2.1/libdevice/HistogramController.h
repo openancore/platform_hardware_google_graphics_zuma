@@ -21,7 +21,8 @@
 class HistogramController : public HistogramDevice {
 public:
     HistogramController(ExynosDisplay* display);
-    virtual void initPlatformHistogramCapability() override;
+    virtual void initPlatformHistogramCapability()
+            EXCLUDES(mHistogramMutex, mBlobIdDataMutex) override;
     virtual ndk::ScopedAStatus queryOPR(std::vector<double>& oprVals)
             EXCLUDES(mInitDrmDoneMutex, mHistogramMutex, mBlobIdDataMutex) override;
 

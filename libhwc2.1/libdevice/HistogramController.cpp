@@ -25,6 +25,16 @@ HistogramController::HistogramController(ExynosDisplay* display)
 void HistogramController::initPlatformHistogramCapability() {
     mHistogramCapability.supportSamplePosList.push_back(HistogramSamplePos::PRE_POSTPROC);
     mHistogramCapability.supportBlockingRoi = true;
+
+#if defined(HISTOGRAM_QUERY_USE_BLOBID)
+    SCOPED_HIST_LOCK(mHistogramMutex);
+    if ((int)mFreeChannels.size() + (int)mUsedChannels.size() >= (int)mPreemptConfigs.size())
+        mHistogramCapability.supportQueryOpr = true;
+    else
+        mHistogramCapability.supportQueryOpr = false;
+#else
+    mHistogramCapability.supportQueryOpr = false;
+#endif
 }
 
 ndk::ScopedAStatus HistogramController::queryOPR(std::vector<double>& oprVals) {
@@ -34,6 +44,14 @@ ndk::ScopedAStatus HistogramController::queryOPR(std::vector<double>& oprVals) {
         HIST_LOG(E, "initDrm is not completed yet");
         // TODO: b/323158344 - add retry error in HistogramErrorCode and return here.
         return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
+    }
+
+    {
+        std::shared_lock lock(mHistogramCapabilityMutex);
+        if (!mHistogramCapability.supportQueryOpr) {
+            HIST_LOG(W, "supportQueryOpr is false");
+            return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
+        }
     }
 
     HistogramErrorCode histogramErrorCode = HistogramErrorCode::NONE;
