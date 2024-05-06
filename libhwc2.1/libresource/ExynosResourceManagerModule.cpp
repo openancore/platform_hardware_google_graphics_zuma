@@ -150,78 +150,65 @@ bool ExynosResourceManagerModule::isHWResourceAvailable(ExynosDisplay *display,
     return true;
 }
 
-void ExynosResourceManagerModule::setupHWResource(const tdm_attr_t &tdmAttrId, const String8 &name,
-                                                  const DPUblockId_t &blkId,
-                                                  const AXIPortId_t &axiId, ExynosDisplay *display,
-                                                  ExynosDisplay *addedDisplay,
-                                                  const ConstraintRev_t &constraintsRev) {
-    const int32_t dispType = display->mType;
-    const auto &resourceIdx = HWResourceIndexes(tdmAttrId, blkId, axiId, dispType, constraintsRev);
+void ExynosResourceManagerModule::setupHWResource(const tdm_attr_t& tdmAttrId, const String8& name,
+                                                  const DPUblockId_t& blkId,
+                                                  const AXIPortId_t& axiId, ExynosDisplay* mainDisp,
+                                                  ExynosDisplay* minorDisp,
+                                                  const ConstraintRev_t& constraintsRev) {
+    const auto& resourceIdx = HWResourceIndexes(tdmAttrId, blkId, axiId, constraintsRev);
     const auto &iter = mHWResourceTables->find(resourceIdx);
     if (iter != mHWResourceTables->end()) {
         auto &hwResource = iter->second;
         const auto &TDMInfoIdx = (HWAttrs.at(tdmAttrId).loadSharing == LS_DPUF)
                 ? std::make_pair(blkId, AXI_DONT_CARE)
                 : std::make_pair(blkId, axiId);
-        uint32_t amount = (addedDisplay == nullptr) ? hwResource.maxAssignedAmount
-                                                    : hwResource.totalAmount -
-                        addedDisplay->mDisplayTDMInfo[TDMInfoIdx]
-                                .getAvailableAmount(tdmAttrId)
-                                .totalAmount;
-        display->mDisplayTDMInfo[TDMInfoIdx].initTDMInfo(DisplayTDMInfo::ResourceAmount_t{amount},
-                                                         tdmAttrId);
-        if (addedDisplay == nullptr) {
-            HDEBUGLOGD(eDebugTDM, "(%s=>%s) : %s amount is updated to %d",
-                       resourceIdx.toString8().c_str(), iter->first.toString8().c_str(),
-                       name.c_str(), amount);
-        } else {
-            HDEBUGLOGD(eDebugTDM, "(%s=>%s) : hwResource.totalAmount=%d %s amount is updated to %d",
-                       resourceIdx.toString8().c_str(), iter->first.toString8().c_str(),
-                       hwResource.totalAmount, name.c_str(), amount);
+        if (mainDisp != nullptr) {
+            const uint32_t mainAmount = (minorDisp != nullptr)
+                    ? hwResource.mainAmount
+                    : hwResource.mainAmount + hwResource.minorAmount;
+            mainDisp->mDisplayTDMInfo[TDMInfoIdx]
+                    .initTDMInfo(DisplayTDMInfo::ResourceAmount_t{mainAmount}, tdmAttrId);
+        }
+        if (minorDisp != nullptr) {
+            const uint32_t minorAmount = hwResource.minorAmount;
+            minorDisp->mDisplayTDMInfo[TDMInfoIdx]
+                    .initTDMInfo(DisplayTDMInfo::ResourceAmount_t{minorAmount}, tdmAttrId);
         }
     } else {
         ALOGW("(%s): cannot find resource for %s", resourceIdx.toString8().c_str(), name.c_str());
     }
 }
 
-uint32_t ExynosResourceManagerModule::setDisplaysTDMInfo()
-{
-    ExynosDisplay *addedDisplay = nullptr;
-
+uint32_t ExynosResourceManagerModule::setDisplaysTDMInfo(ExynosDisplay* mainDisp,
+                                                         ExynosDisplay* minorDisp) {
     /*
-     * Checking display connections,
-     * Assume that WFD and External are not connected at the same time
-     * If non-primary display is connected, primary display's HW resource is looted
+     * Update main/minor display resource amount
+     * If only one display exists, all TDM resources are allocated for the only display.
      */
-    for (auto &display : mDisplays) {
-        if (display->mType == HWC_DISPLAY_PRIMARY) continue;
-        if (display->isEnabled()) {
-            addedDisplay = display;
-            break;
-        }
-    }
-
-    /*
-     * Update Primary's resource amount. primary = total - loot(other display's HW resource)
-     * Other's aready defined at initDisplaysTDMInfo()
-     */
-    ExynosDisplay *primaryDisplay = getDisplay(getDisplayId(HWC_DISPLAY_PRIMARY, 0));
     for (auto attr = HWAttrs.begin(); attr != HWAttrs.end(); attr++) {
         for (auto blockId = DPUBlocks.begin(); blockId != DPUBlocks.end(); blockId++) {
             if (attr->second.loadSharing == LS_DPUF) {
                 setupHWResource(attr->first, attr->second.name, blockId->first, AXI_DONT_CARE,
-                                primaryDisplay, addedDisplay, mConstraintRev);
+                                mainDisp, minorDisp, mConstraintRev);
             } else if (attr->second.loadSharing == LS_DPUF_AXI) {
                 for (auto axi = AXIPorts.begin(); axi != AXIPorts.end(); ++axi) {
                     setupHWResource(attr->first, attr->second.name, blockId->first, axi->first,
-                                    primaryDisplay, addedDisplay, mConstraintRev);
+                                    mainDisp, minorDisp, mConstraintRev);
                 }
+            }
+            else {
+                ALOGE("%s attr[%s] wrong load sharing=%d", __func__, attr->second.name.c_str(),
+                                                           attr->second.loadSharing);
+                return BAD_TYPE;
             }
         }
     }
 
     if (hwcCheckDebugMessages(eDebugTDM)) {
         for (auto &display : mDisplays) {
+            if (!(display->mPlugState == true && display->mPowerModeState.has_value() &&
+                  display->mPowerModeState.value() != (hwc2_power_mode_t)HWC_POWER_MODE_OFF))
+                continue;
             for (auto attr = HWAttrs.begin(); attr != HWAttrs.end(); attr++) {
                 for (auto blockId = DPUBlocks.begin(); blockId != DPUBlocks.end(); blockId++) {
                     if (attr->second.loadSharing == LS_DPUF) {
@@ -230,7 +217,7 @@ uint32_t ExynosResourceManagerModule::setDisplaysTDMInfo()
                                                  .getAvailableAmount(attr->first)
                                                  .totalAmount;
                         HDEBUGLOGD(eDebugTDM, "%s : [%s] display:%d,block:%d, amount : %d(%s)",
-                                   __func__, attr->second.name.c_str(), display->mType,
+                                   __func__, attr->second.name.c_str(), display->mDisplayId,
                                    blockId->first, amount,
                                    display->isEnabled() ? "used" : "not used");
                     } else {
@@ -251,32 +238,7 @@ uint32_t ExynosResourceManagerModule::setDisplaysTDMInfo()
         }
     }
 
-    return 0;
-}
-
-uint32_t ExynosResourceManagerModule::initDisplaysTDMInfo()
-{
-    /*
-     * Initialize as predefined value at table
-     * Primary's resource will be changed at setDisplaysTDMInfo() function
-     */
-    for (auto &display : mDisplays) {
-        for (auto attr = HWAttrs.begin(); attr != HWAttrs.end(); attr++) {
-            for (auto blockId = DPUBlocks.begin(); blockId != DPUBlocks.end(); blockId++) {
-                if (attr->second.loadSharing == LS_DPUF) {
-                    setupHWResource(attr->first, attr->second.name, blockId->first, AXI_DONT_CARE,
-                                    display, nullptr, mConstraintRev);
-                } else if (attr->second.loadSharing == LS_DPUF_AXI) {
-                    for (auto axi = AXIPorts.begin(); axi != AXIPorts.end(); ++axi) {
-                        setupHWResource(attr->first, attr->second.name, blockId->first, axi->first,
-                                        display, nullptr, mConstraintRev);
-                    }
-                }
-            }
-        }
-    }
-
-    return 0;
+    return NO_ERROR;
 }
 
 uint32_t getSramAmount(tdm_attr_t attr, uint32_t formatProperty, lbWidthIndex_t widthIndex) {
@@ -614,4 +576,16 @@ uint32_t ExynosResourceManagerModule::getAmounts(ExynosDisplay* display, uint32_
     }
 
     return 0;
+}
+
+bool ExynosResourceManagerModule::isAssignable(ExynosMPP* candidateMPP, ExynosDisplay* display,
+                                               struct exynos_image& src, struct exynos_image& dst,
+                                               ExynosMPPSource* mppSrc) {
+    if (display != nullptr && candidateMPP != nullptr &&
+        display->mType == HWC_DISPLAY_EXTERNAL &&
+        !(candidateMPP->mPhysicalType == MPP_DPP_VGRFS && candidateMPP->mPhysicalIndex == 0)) {
+        return false;
+    }
+    return gs201::ExynosResourceManagerModule::isAssignable(candidateMPP, display, src, dst,
+                                                            mppSrc);
 }
