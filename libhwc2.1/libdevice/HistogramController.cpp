@@ -37,7 +37,7 @@ void HistogramController::initPlatformHistogramCapability() {
 #endif
 }
 
-ndk::ScopedAStatus HistogramController::queryOPR(std::vector<double>& oprVals) {
+ndk::ScopedAStatus HistogramController::queryOPR(std::array<double, kOPRConfigsCount>& oprVals) {
     ATRACE_CALL();
 
     if (waitInitDrmDone() == false) {
@@ -101,7 +101,8 @@ ndk::ScopedAStatus HistogramController::queryOPR(std::vector<double>& oprVals) {
 
 HistogramController::HistogramErrorCode HistogramController::getOPRVals(
         const std::array<uint32_t, kOPRConfigsCount>& blobIds,
-        const std::array<int, kOPRConfigsCount>& channelIds, std::vector<double>& oprVals) {
+        const std::array<int, kOPRConfigsCount>& channelIds,
+        std::array<double, kOPRConfigsCount>& oprVals) {
     ATRACE_CALL();
 
     std::array<std::vector<char16_t>, kOPRConfigsCount> histogramBuffer;
@@ -162,7 +163,6 @@ HistogramController::HistogramErrorCode HistogramController::getOPRVals(
     for (auto& error : errorCodes)
         if (error != HistogramErrorCode::NONE) return error;
 
-    oprVals.resize(kOPRConfigsCount, 0);
     for (int i = 0; i < kOPRConfigsCount; ++i) {
         errorCodes[i] = calculateOPRVal(mPreemptConfigs[i].name, histogramBuffer[i], blobIds[i],
                                         channelIds[i], oprVals[i]);

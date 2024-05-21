@@ -23,7 +23,7 @@ public:
     HistogramController(ExynosDisplay* display);
     virtual void initPlatformHistogramCapability()
             EXCLUDES(mHistogramMutex, mBlobIdDataMutex) override;
-    virtual ndk::ScopedAStatus queryOPR(std::vector<double>& oprVals)
+    virtual ndk::ScopedAStatus queryOPR(std::array<double, kOPRConfigsCount>& oprVals)
             EXCLUDES(mInitDrmDoneMutex, mHistogramMutex, mBlobIdDataMutex) override;
 
 private:
@@ -32,7 +32,6 @@ private:
         const HistogramConfig config;
     };
 
-    static constexpr int kOPRConfigsCount = 3;
     const std::array<PreemptConfigInfo, kOPRConfigsCount> mPreemptConfigs{
         {{
              .name = "Linear space OPR(RED)",
@@ -66,7 +65,7 @@ private:
 
     HistogramErrorCode getOPRVals(const std::array<uint32_t, kOPRConfigsCount>& blobIds,
                                   const std::array<int, kOPRConfigsCount>& channelIds,
-                                  std::vector<double>& oprVals)
+                                  std::array<double, kOPRConfigsCount>& oprVals)
             EXCLUDES(mInitDrmDoneMutex, mHistogramMutex, mBlobIdDataMutex);
 
     HistogramErrorCode calculateOPRVal(const char* configName,
