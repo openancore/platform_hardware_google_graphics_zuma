@@ -26,7 +26,7 @@ void HistogramController::initPlatformHistogramCapability() {
     mHistogramCapability.supportSamplePosList.push_back(HistogramSamplePos::PRE_POSTPROC);
     mHistogramCapability.supportBlockingRoi = true;
 
-#if defined(HISTOGRAM_QUERY_USE_BLOBID)
+#if defined(EXYNOS_CONTEXT_HISTOGRAM_EVENT_REQUEST)
     SCOPED_HIST_LOCK(mHistogramMutex);
     if ((int)mFreeChannels.size() + (int)mUsedChannels.size() >= (int)mPreemptConfigs.size())
         mHistogramCapability.supportQueryOpr = true;
