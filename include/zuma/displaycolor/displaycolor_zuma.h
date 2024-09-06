@@ -175,7 +175,9 @@ class IDisplayColorZuma : public IDisplayColorGeneric {
     };
 
     /// Get pipeline color data for specified display type
+    // deprecated by the 'int64_t display' version
     virtual const IDisplayPipelineData* GetPipelineData(DisplayType display) const = 0;
+    virtual const IDisplayPipelineData* GetPipelineData(const int64_t display) const = 0;
 
     virtual ~IDisplayColorZuma() {}
 };
