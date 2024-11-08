@@ -257,7 +257,7 @@ void ExynosPrimaryDisplayModule::checkPreblendingRequirement() {
         if (!colorManager) return false;
         auto& dpp = colorManager->getDppForLayer(mppSrc);
         mppSrc->mNeedPreblending =
-                dpp.EotfLut().enable | dpp.Gm().enable | dpp.Dtm().enable | dpp.OetfLut().enable;
+                dpp.EotfLut().enable || dpp.Gm().enable || dpp.Dtm().enable || dpp.OetfLut().enable;
         if (hwcCheckDebugMessages(eDebugTDM)) {
             log.appendFormat(" i=%d,pb(%d-%d,%d,%d,%d)", idx, mppSrc->mNeedPreblending,
                              dpp.EotfLut().enable, dpp.Gm().enable, dpp.Dtm().enable,
